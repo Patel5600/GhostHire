@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # Main Backend API
+  api:
+    build: .
+    container_name: ghosthire_api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ghosthire
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AI_API_KEY=${AI_API_KEY}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - ghosthire-net
+
+  # Celery Worker (Scraper, AI, Automation)
+  worker:
+    build: .
+    container_name: ghosthire_worker
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ghosthire
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AI_API_KEY=${AI_API_KEY}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - ghosthire-net
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: ghosthire_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ghosthire
+    ports:
+      - "5432:5432"
+    networks:
+      - ghosthire-net
+
+  # Redis (Queue & Cache)
+  redis:
+    image: redis:7-alpine
+    container_name: ghosthire_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - ghosthire-net
+
+  # Nginx Gateway (Local Simulation)
+  nginx:
+    image: nginx:alpine
+    container_name: ghosthire_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
+    networks:
+      - ghosthire-net
+
+  # Monitoring - Prometheus (Optional - Uncomment to enable)
+  # prometheus:
+  #   image: prom/prometheus
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - ghosthire-net
+
+volumes:
+  postgres_data:
+
+networks:
+  ghosthire-net:
+    driver: bridge

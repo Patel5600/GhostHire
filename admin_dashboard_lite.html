@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GhostHire Admin</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px; background: #f4f6f8; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .value { font-size: 2em; font-weight: bold; color: #2d3748; }
+        .label { color: #718096; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GhostHire Admin</h1>
+        <button onclick="refresh()">Refresh</button>
+    </div>
+    <div id="dashboard" class="card-grid">
+        <!-- Metrics will load here -->
+        <div class="card">Loading...</div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000/api/v1/admin/metrics";
+        // Need to set Authorization header with a valid token in real usage
+        // For demo, we assume browser has cookie or we prompt
+        
+        async function refresh() {
+            const token = prompt("Enter Admin Token (Bearer):");
+            try {
+                const res = await fetch(API_URL, {
+                    headers: { "Authorization": "Bearer " + token }
+                });
+                const data = await res.json();
+                
+                const html = `
+                    <div class="card"><div class="value">${data.users.total}</div><div class="label">Total Users</div></div>
+                    <div class="card"><div class="value">${data.applications.total}</div><div class="label">Applications</div></div>
+                    <div class="card"><div class="value">${data.automation.active_pipelines}</div><div class="label">Active Pipelines</div></div>
+                    <div class="card"><div class="value">${data.ai.total_requests}</div><div class="label">AI Requests</div></div>
+                `;
+                document.getElementById('dashboard').innerHTML = html;
+            } catch (e) {
+                alert("Error loading metrics: " + e);
+            }
+        }
+    </script>
+</body>
+</html>

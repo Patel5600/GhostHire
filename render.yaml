@@ -1,0 +1,46 @@
+services:
+  # Web Service (API)
+  - type: web
+    name: ghosthire-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ghosthire-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: ghosthire-redis
+          property: connectionString
+
+  # Background Worker (Celery)
+  - type: worker
+    name: ghosthire-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.core.celery_app worker --loglevel=info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ghosthire-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: ghosthire-redis
+          property: connectionString
+
+databases:
+  - name: ghosthire-db
+    databaseName: ghosthire
+    user: ghosthire
+
+  - name: ghosthire-redis
+    ipAllowList: [] # Allow internal connections only
