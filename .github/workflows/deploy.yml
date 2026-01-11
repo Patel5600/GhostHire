@@ -3,6 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,7 +26,7 @@ jobs:
         context: .
         file: ./docker/backend.prod.Dockerfile
         push: true
-        tags: user/ghosthire-backend:latest
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/ghosthire-backend:latest
 
     - name: Build and push Frontend
       uses: docker/build-push-action@v4
@@ -33,7 +34,7 @@ jobs:
         context: .
         file: ./docker/frontend.prod.Dockerfile
         push: true
-        tags: user/ghosthire-frontend:latest
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/ghosthire-frontend:latest
 
   deploy:
     needs: build

@@ -20,9 +20,10 @@ services:
     restart: always
 
   backend:
-    build:
-      context: .
-      dockerfile: docker/backend.prod.Dockerfile
+    image: ${DOCKERHUB_USERNAME:-user}/ghosthire-backend:latest
+    # build:
+    #   context: .
+    #   dockerfile: docker/backend.prod.Dockerfile
     command: [ "/bin/bash", "scripts/entrypoint.sh", "backend" ]
     volumes:
       - ./uploads:/app/uploads
@@ -39,9 +40,7 @@ services:
     restart: always
 
   worker:
-    build:
-      context: .
-      dockerfile: docker/backend.prod.Dockerfile
+    image: ${DOCKERHUB_USERNAME:-user}/ghosthire-backend:latest
     command: [ "/bin/bash", "scripts/entrypoint.sh", "worker" ]
     volumes:
       - ./uploads:/app/uploads
@@ -60,9 +59,7 @@ services:
     restart: always
 
   frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend.prod.Dockerfile
+    image: ${DOCKERHUB_USERNAME:-user}/ghosthire-frontend:latest
     networks:
       - backend-net
     restart: always
