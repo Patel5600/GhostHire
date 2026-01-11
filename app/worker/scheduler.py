@@ -1,27 +1,17 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from app.api.v1.endpoints.ingest import run_scrape_job
-from app.db.session import engine
-from sqlalchemy.orm import sessionmaker
-from sqlmodel.ext.asyncio.session import AsyncSession
+# from app.workers.job_ingest_worker import run_ingestion_task # Future integration
 
 scheduler = AsyncIOScheduler()
 
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
 def start_scheduler():
-    # Example daily job: Scrape known career pages
-    # In production, fetch these URLs from the Company database table where 'careers_page_url' is set.
+    # Example daily job logic would go here.
+    # Currently, ingestion is triggered via API or Celery Beats (if configured).
     
-    # scheduler.add_job(
-    #     run_scrape_job, 
-    #     'cron', 
-    #     hour=0, 
-    #     minute=0, 
-    #     args=["https://boards.greenhouse.io/example", "greenhouse", async_session]
-    # )
-    
-    scheduler.start()
-    print("Scheduler started...")
+    # if not scheduler.running:
+    #     scheduler.start()
+    #     print("Scheduler started...")
+    pass
 
 async def stop_scheduler():
-    scheduler.shutdown()
+    if scheduler.running:
+        scheduler.shutdown()

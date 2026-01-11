@@ -18,7 +18,7 @@ class BrowserManager:
             # In production, you might want to perform browser context management more carefully
             # or connect to a remote browser (ws://...)
             self._browser = await self._playwright.chromium.launch(
-                headless=False, # True for prod, False for debugging
+                headless=True, # True for prod
                 args=["--no-sandbox", "--disable-setuid-sandbox"]
             )
         return self._browser
