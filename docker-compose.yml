@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   # Main Backend API
   api:
     build: .
@@ -10,29 +11,35 @@ services:
       - .:/app
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ghosthire
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - AI_API_KEY=${AI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
       - redis
     networks:
       - ghosthire-net
 
-  # Celery Worker (Scraper, AI, Automation)
+  # Celery Worker
   worker:
     build: .
     container_name: ghosthire_worker
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ghosthire
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - AI_API_KEY=${AI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
       - redis
@@ -54,7 +61,7 @@ services:
     networks:
       - ghosthire-net
 
-  # Redis (Queue & Cache)
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: ghosthire_redis
@@ -63,7 +70,7 @@ services:
     networks:
       - ghosthire-net
 
-  # Nginx Gateway (Local Simulation)
+  # Nginx Gateway
   nginx:
     image: nginx:alpine
     container_name: ghosthire_nginx
@@ -75,16 +82,6 @@ services:
       - api
     networks:
       - ghosthire-net
-
-  # Monitoring - Prometheus (Optional - Uncomment to enable)
-  # prometheus:
-  #   image: prom/prometheus
-  #   volumes:
-  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-  #   ports:
-  #     - "9090:9090"
-  #   networks:
-  #     - ghosthire-net
 
 volumes:
   postgres_data:

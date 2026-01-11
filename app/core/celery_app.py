@@ -17,5 +17,10 @@ celery_app.conf.update(
     worker_concurrency=2, # Limit concurrency
 )
 
+celery_app.conf.imports = [
+    "app.workers.job_ingest_worker",
+    "app.workers.auto_apply_worker"
+]
+
 # Auto-discover tasks in packages
 celery_app.autodiscover_tasks(["app.services.orchestrator.tasks"])

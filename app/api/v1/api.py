@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, resumes, jobs, applications, ai, ingest, automation, analytics, orchestrator, admin
+from app.api.v1.endpoints import auth, resumes, jobs, applications, ai, ingest, automation, analytics, orchestrator, admin, match
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(automation.router, prefix="/automation", tags=["automa
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(orchestrator.router, prefix="/orchestrator", tags=["orchestrator"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(match.router, prefix="/match", tags=["match"])

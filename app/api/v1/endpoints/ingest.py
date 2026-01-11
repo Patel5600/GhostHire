@@ -1,63 +1,52 @@
-from typing import List, Any
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from typing import Any
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 
 from app.api import deps
-from app.services.scraper.crawlers import GreenhouseScraper, LeverScraper
-from app.services.ingest_service import IngestService
-from app.services.scraper.browser import browser_manager
+from app.models.user import User
+from app.models.job import JobSource
+from app.schemas.ingest import IngestTriggerRequest, IngestStatus
+from app.workers.job_ingest_worker import run_ingestion_task
 
 router = APIRouter()
 
-async def run_scrape_job(url: str, type: str, session_factory):
-    """
-    Background task to run scraping.
-    We need a fresh session for the background task.
-    """
-    # Note: In a real app complexity, session management for bg tasks needs care.
-    # Here we instantiate a session manually.
-    async with session_factory() as session:
-        scraper = None
-        if type == "greenhouse":
-            scraper = GreenhouseScraper(url, company_name="Unknown") # Ideally we scrape company name or pass it
-        elif type == "lever":
-            scraper = LeverScraper(url, company_name="Unknown")
-        
-        if scraper:
-            jobs = await scraper.scrape()
-            ingest = IngestService(session)
-            await ingest.ingest_jobs(jobs, url)
-
-@router.post("/trigger")
-async def trigger_ingest(
-    url: str,
-    type: str,
-    background_tasks: BackgroundTasks,
+@router.post("/trigger", response_model=IngestStatus)
+async def trigger_ingestion(
+    request: IngestTriggerRequest,
+    current_user: User = Depends(deps.get_current_active_superuser),
     db: AsyncSession = Depends(deps.get_session)
 ) -> Any:
     """
-    Trigger a scrape job for a specific URL.
-    Type: 'greenhouse' or 'lever'
+    Trigger a job ingestion task.
+    Upserts a JobSource config and dispatches a Celery task.
     """
-    if type not in ["greenhouse", "lever"]:
-        raise HTTPException(400, "Invalid scraper type")
-        
-    # We can't pass the 'db' session to background task easily as it might close.
-    # We rely on a pattern where we might need to create a new session in the task.
-    # For simplicity, we will run it inline or use a hack. 
-    # BETTER: Just run inline for this demo if it's fast, or use proper worker.
-    # Given 'async', we can just await it if we accept the latency, OR use a global session factory.
+    # 1. Check or Create Source
+    result = await db.execute(select(JobSource).where(JobSource.name == request.source_name))
+    source = result.scalars().first()
     
-    # For this deliverable, let's just await it to ensure it works and return result immediately, 
-    # or finding a way to get session factory. 
-    # 'deps.get_session' is a generator.
+    if not source:
+        source = JobSource(
+            name=request.source_name,
+            type=request.source_type,
+            base_url=request.base_url,
+            config=request.config
+        )
+        db.add(source)
+    else:
+        # Update config
+        source.type = request.source_type
+        source.base_url = request.base_url
+        source.config = request.config
+        db.add(source)
     
-    # Re-using the logic from db/session.py
-    from app.db.session import engine
-    from sqlalchemy.orm import sessionmaker
+    await db.commit()
+    await db.refresh(source)
     
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    # 2. Trigger Celery Task
+    task = run_ingestion_task.delay(source.id)
     
-    background_tasks.add_task(run_scrape_job, url, type, async_session)
-    
-    return {"message": "Scrape job triggered in background"}
+    return IngestStatus(
+        task_id=task.id,
+        status="queued"
+    )

@@ -1,17 +1,19 @@
-from typing import Optional
-from sqlmodel import SQLModel
+from pydantic import BaseModel, EmailStr, Field
 
-class UserCreate(SQLModel):
-    email: str
-    password: str
-    full_name: Optional[str] = None
 
-class UserRead(SQLModel):
+class UserBase(BaseModel):
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserCreate(UserBase):
+    # Keep it human-sized. bcrypt wants <=72 BYTES.
+    password: str = Field(min_length=6, max_length=72)
+
+
+class UserRead(UserBase):
     id: int
-    email: str
-    full_name: Optional[str] = None
     is_active: bool
 
-class UserLogin(SQLModel):
-    email: str
-    password: str
+    class Config:
+        from_attributes = True

@@ -1,26 +1,25 @@
-import io
-from pypdf import PdfReader
-from fastapi import UploadFile
+import re
 
-async def parse_pdf_content(file: UploadFile) -> str:
-    """
-    Parses text content from a PDF file.
-    """
-    try:
-        # Read file content into memory
-        content = await file.read()
-        pdf_file = io.BytesIO(content)
-        
-        # Parse PDF
-        reader = PdfReader(pdf_file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
-        
-        # Reset file cursor for further use if needed
-        await file.seek(0) 
-        
-        return text.strip()
-    except Exception as e:
-        print(f"Error parsing PDF: {e}")
-        return ""
+def parse_resume(text: str) -> dict:
+    data = {}
+
+    # Extract email
+    email_match = re.search(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
+    if email_match:
+        data["email"] = email_match.group(0)
+
+    # Extract phone
+    phone_match = re.search(r"\+?\d[\d\s\-]{8,15}", text)
+    if phone_match:
+        data["phone"] = phone_match.group(0)
+
+    # Extract skills (simple keyword scan)
+    skills_keywords = [
+        "python", "java", "javascript", "react", "node", "docker",
+        "aws", "sql", "fastapi", "django", "flask"
+    ]
+
+    found_skills = [skill for skill in skills_keywords if skill.lower() in text.lower()]
+    data["skills"] = found_skills
+
+    return data
